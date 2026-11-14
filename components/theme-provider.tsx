@@ -1,24 +1,67 @@
 "use client"
 
 import * as React from "react"
-import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes"
+type Theme = "light" | "dark" | "system"
+type ResolvedTheme = Exclude<Theme, "system">
+
+type ThemeContextValue = {
+  resolvedTheme: ResolvedTheme | undefined
+  setTheme: (theme: Theme) => void
+}
+
+const ThemeContext = React.createContext<ThemeContextValue | null>(null)
 
 function ThemeProvider({
   children,
-  ...props
-}: React.ComponentProps<typeof NextThemesProvider>) {
+  attribute = "class",
+  defaultTheme = "system",
+  enableSystem = true,
+}: React.PropsWithChildren<{
+  attribute?: string
+  defaultTheme?: Theme
+  enableSystem?: boolean
+}>) {
+  const [theme, setTheme] = React.useState<Theme>(defaultTheme)
+  const [systemTheme, setSystemTheme] = React.useState<ResolvedTheme>()
+
+  React.useEffect(() => {
+    if (!enableSystem) return
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
+    const updateSystemTheme = () =>
+      setSystemTheme(mediaQuery.matches ? "dark" : "light")
+
+    updateSystemTheme()
+    mediaQuery.addEventListener("change", updateSystemTheme)
+    return () => mediaQuery.removeEventListener("change", updateSystemTheme)
+  }, [enableSystem])
+
+  const resolvedTheme = theme === "system" ? systemTheme : theme
+
+  React.useEffect(() => {
+    if (!resolvedTheme) return
+
+    const root = document.documentElement
+    if (attribute === "class") {
+      root.classList.remove("light", "dark")
+      root.classList.add(resolvedTheme)
+    } else {
+      root.setAttribute(attribute, resolvedTheme)
+    }
+  }, [attribute, resolvedTheme])
+
   return (
-    <NextThemesProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-      {...props}
-    >
+    <ThemeContext.Provider value={{ resolvedTheme, setTheme }}>
       <ThemeHotkey />
       {children}
-    </NextThemesProvider>
+    </ThemeContext.Provider>
   )
+}
+
+function useTheme() {
+  const context = React.useContext(ThemeContext)
+  if (!context) throw new Error("useTheme must be used within ThemeProvider")
+  return context
 }
 
 function isTypingTarget(target: EventTarget | null) {

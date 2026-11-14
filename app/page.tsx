@@ -2,6 +2,7 @@ import { SiteNavbar } from "@/components/site-navbar"
 import { Hero } from "@/components/hero"
 import { Button } from "@/components/ui/button"
 
+
 export default function Page() {
   return (
     <div className="flex min-h-svh flex-col bg-[#08080a]">
